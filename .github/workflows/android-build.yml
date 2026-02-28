@@ -17,16 +17,15 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js environment
+      # 2. Setup Node.js environment (Modified to remove cache requirement)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      # 3. Install NPM Dependencies
+      # 3. Install NPM Dependencies (Using install instead of ci)
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       # 4. Sync web code to the Capacitor Android project
       - name: Capacitor Sync
