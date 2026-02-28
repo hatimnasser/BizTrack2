@@ -1,24 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+
 :root {
-  --bg: #F7F4EF;
+  /* High-Contrast Professional Palette */
+  --bg: #F3F4F6;             /* Cool gray cuts glare better than warm cream */
   --surface: #FFFFFF;
-  --primary: #1B3A4B;
-  --primary-light: #2A5570;
-  --accent: #E8A020;
-  --success: #2D6A4F;
-  --danger: #C1440E;
-  --danger-bg: #FDEEE8;
-  --muted: #9C8F85;
-  --text: #1C1917;
-  --font: 'DM Sans', sans-serif;
-  --mono: 'DM Mono', monospace;
+  --primary: #0F293E;        /* Darkened Deep Teal for maximum contrast */
+  --primary-light: #1E4A6D;
+  --accent: #D97706;         /* Darkened Amber to ensure white text pops */
+  --success: #15803D;        /* Deepened Green */
+  --danger: #B91C1C;         /* Deepened Red */
+  --danger-bg: #FEF2F2;
+  
+  /* Legibility-focused Text Colors */
+  --text: #111827;           /* Near-black for crisp reading */
+  --text-2: #374151;         /* Dark gray (replacing lighter grays) */
+  --text-3: #4B5563;         /* Muted text, but still passes WCAG AA */
+  --border: #D1D5DB;         /* Stronger borders for visible separation */
+  
+  --font: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
 }
 
 body {
     background: var(--bg);
     color: var(--text);
     font-family: var(--font);
+    font-size: 16px; /* Bumped up slightly for outdoor reading */
+    line-height: 1.5;
     margin: 0;
     -webkit-tap-highlight-color: transparent;
+}
+
+/* Force high contrast on cards to combat glare */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border); /* Added explicit border for bright light */
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    margin-bottom: 12px;
 }
 
 /* Header & Nav */
