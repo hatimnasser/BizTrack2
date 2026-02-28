@@ -1,0 +1,13 @@
+{
+  "appId": "com.biztrack.pro",
+  "appName": "Biztrack Pro",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "CapacitorSQLite": {
+      "iosIsEncryption": false,
+      "iosDatabaseLocation": "Library/CapacitorDatabase",
+      "androidDatabaseLocation": "default"
+    }
+  }
+}
