@@ -1,0 +1,56 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main" ] # Triggers the build on pushes to the main branch
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows you to run this manually from the GitHub UI
+
+jobs:
+  build:
+    name: Build Capacitor Android App
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the repository code
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. Install NPM Dependencies
+      - name: Install Dependencies
+        run: npm ci
+
+      # 4. Sync web code to the Capacitor Android project
+      - name: Capacitor Sync
+        run: |
+          npx cap add android || true
+          npx cap sync android
+
+      # 5. Setup Java (Required for Android build)
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      # 6. Build the Android APK using Gradle
+      - name: Build Debug APK
+        working-directory: ./android
+        run: ./gradlew assembleDebug
+
+      # 7. Upload the APK so you can download it from GitHub
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BizTrack-Pro-Debug-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
