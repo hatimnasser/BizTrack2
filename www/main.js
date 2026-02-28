@@ -1,52 +1,99 @@
 import { DBService } from './db.js';
 
-// App State
-let currencySymbol = 'UGX';
+let currency = 'UGX';
 
 document.addEventListener('DOMContentLoaded', async () => {
     await DBService.init();
-    await loadSettings();
-    await renderDashboard();
+    const settings = await DBService.query("SELECT * FROM settings WHERE id=1");
+    currency = settings.values[0].currency;
+    document.getElementById('h-bizname').innerText = settings.values[0].biz_name;
+    
+    updateDashboard();
+    initClock();
 });
 
-async function loadSettings() {
-    const res = await DBService.query("SELECT biz_name, currency FROM settings WHERE id = 1");
-    if (res.values.length > 0) {
-        document.getElementById('h-bizname').innerText = res.values[0].biz_name;
-        currencySymbol = res.values[0].currency;
-    }
-}
-
-async function renderDashboard() {
-    // Replace array reduce methods with efficient SQLite aggregations
-    const salesRes = await DBService.query("SELECT SUM(total) as revenue, SUM(profit) as profit FROM sales");
-    const rev = salesRes.values[0].revenue || 0;
-    const prof = salesRes.values[0].profit || 0;
-
-    document.getElementById('kpi-rev').innerText = `${currencySymbol} ${rev.toLocaleString()}`;
-    document.getElementById('kpi-profit').innerText = `${currencySymbol} ${prof.toLocaleString()}`;
-
-    // Load recent sales
-    const recentSales = await DBService.query("SELECT * FROM sales ORDER BY date DESC LIMIT 5");
-    const listEl = document.getElementById('sales-list');
-    
-    listEl.innerHTML = recentSales.values.map(s => {
-        // UTF-8 rendering handled automatically by DOM insertion + Meta charset
-        const badge = s.status === 'OVERDUE' ? `<span class="badge-overdue">Overdue</span>` : '';
-        return `
-            <div style="background: white; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
-                <strong>${s.customer_name}</strong> - ${currencySymbol} ${s.total}
-                <div style="float: right;">${badge}</div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Global scope mapping for UI buttons
+// NAVIGATION
 window.showPage = (pageId) => {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    
     document.getElementById(`page-${pageId}`).classList.add('active');
-    event.currentTarget.classList.add('active');
+    
+    if(pageId === 'inventory') renderInventory();
+    if(pageId === 'sales-add') populateProductSelect();
+    if(pageId === 'dashboard') updateDashboard();
 };
+
+// INVENTORY LOGIC
+window.saveProduct = async () => {
+    const data = [
+        document.getElementById('p-name').value,
+        parseFloat(document.getElementById('p-price').value),
+        parseFloat(document.getElementById('p-cost').value),
+        parseInt(document.getElementById('p-stock').value),
+        parseInt(document.getElementById('p-alert').value)
+    ];
+
+    await DBService.run(
+        "INSERT INTO products (name, price, cost, stock, low_stock_alert) VALUES (?,?,?,?,?)",
+        data
+    );
+    alert("Product Saved");
+    showPage('inventory');
+};
+
+async function renderInventory() {
+    const res = await DBService.query("SELECT * FROM products ORDER BY name ASC");
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = res.values.map(p => `
+        <div class="card">
+            <div style="display:flex; justify-content:space-between;">
+                <strong>${p.name}</strong>
+                <span style="color:${p.stock <= p.low_stock_alert ? 'var(--danger)' : 'var(--success)'}">
+                    Qty: ${p.stock}
+                </span>
+            </div>
+            <small>${currency} ${p.price}</small>
+        </div>
+    `).join('');
+}
+
+// SALES LOGIC
+async function populateProductSelect() {
+    const res = await DBService.query("SELECT id, name, price FROM products WHERE stock > 0");
+    const select = document.getElementById('s-product-select');
+    select.innerHTML = res.values.map(p => `<option value="${p.id}">${p.name} (${currency} ${p.price})</option>`).join('');
+}
+
+window.processSale = async () => {
+    const pid = document.getElementById('s-product-select').value;
+    const qty = parseInt(document.getElementById('s-qty').value);
+    const customer = document.getElementById('s-customer').value || 'Cash Customer';
+
+    const pRes = await DBService.query("SELECT * FROM products WHERE id=?", [pid]);
+    const p = pRes.values[0];
+    
+    const total = p.price * qty;
+    const cost = p.cost * qty;
+    const profit = total - cost;
+
+    await DBService.run(
+        "INSERT INTO sales (id, item_id, qty, total, cost, profit, customer_name, status) VALUES (?,?,?,?,?,?,?,?)",
+        [Date.now().toString(), pid, qty, total, cost, profit, customer, 'PAID']
+    );
+    await DBService.run("UPDATE products SET stock = stock - ? WHERE id = ?", [qty, pid]);
+    
+    alert("Sale Completed");
+    showPage('dashboard');
+};
+
+async function updateDashboard() {
+    const res = await DBService.query("SELECT SUM(total) as rev, SUM(profit) as prof FROM sales");
+    document.getElementById('kpi-rev').innerText = (res.values[0].rev || 0).toLocaleString();
+    document.getElementById('kpi-profit').innerText = (res.values[0].prof || 0).toLocaleString();
+}
+
+function initClock() {
+    const update = () => {
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString();
+    };
+    update();
+}
