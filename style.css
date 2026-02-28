@@ -1,0 +1,50 @@
+:root {
+  --bg: #F7F4EF;
+  --surface: #FFFFFF;
+  --primary: #1B3A4B;
+  --primary-light: #2A5570;
+  --accent: #E8A020;
+  --success: #2D6A4F;
+  --danger: #C1440E;
+  --danger-bg: #FDEEE8;
+  --muted: #9C8F85;
+  --text: #1C1917;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Header & Nav */
+#header {
+    height: 56px;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+}
+#header-title span { color: var(--accent); }
+
+/* KPI Grid */
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.kpi-card { background: var(--surface); padding: 14px; border-radius: 14px; border-top: 3px solid var(--primary); }
+.kpi-card.success { border-top-color: var(--success); }
+.kpi-val { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+
+/* Status Badges */
+.badge-overdue {
+    background: var(--danger-bg);
+    color: var(--danger);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
