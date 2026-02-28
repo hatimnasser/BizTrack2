@@ -1,99 +1,129 @@
 import { DBService } from './db.js';
 
-let currency = 'UGX';
-
+// --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
-    await DBService.init();
-    const settings = await DBService.query("SELECT * FROM settings WHERE id=1");
-    currency = settings.values[0].currency;
-    document.getElementById('h-bizname').innerText = settings.values[0].biz_name;
-    
-    updateDashboard();
-    initClock();
+    try {
+        console.log("Initializing Database...");
+        await DBService.init();
+        
+        // Setup UI
+        await renderDashboard();
+        await populateProductSelect();
+        
+        console.log("Engine Online");
+    } catch (err) {
+        console.error("CRITICAL ERROR:", err);
+        alert("Database Error: " + err.message);
+    }
 });
 
-// NAVIGATION
-window.showPage = (pageId) => {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(`page-${pageId}`).classList.add('active');
-    
-    if(pageId === 'inventory') renderInventory();
-    if(pageId === 'sales-add') populateProductSelect();
-    if(pageId === 'dashboard') updateDashboard();
+// --- NAVIGATION (Fixes Unresponsive Tabs) ---
+const showPage = (pageId) => {
+    console.log("Navigating to:", pageId);
+    // Hide all
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    // Show target
+    const target = document.getElementById(`page-${pageId}`);
+    if (target) {
+        target.style.display = 'block';
+    } else {
+        console.error("Page ID not found:", pageId);
+    }
+
+    // Tab Bar Highlight
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.outerHTML.includes(pageId)) btn.classList.add('active');
+    });
+
+    // Refresh data based on page
+    if (pageId === 'inventory') renderInventory();
+    if (pageId === 'dashboard') renderDashboard();
 };
 
-// INVENTORY LOGIC
-window.saveProduct = async () => {
-    const data = [
-        document.getElementById('p-name').value,
-        parseFloat(document.getElementById('p-price').value),
-        parseFloat(document.getElementById('p-cost').value),
-        parseInt(document.getElementById('p-stock').value),
-        parseInt(document.getElementById('p-alert').value)
-    ];
+// --- SALES LOGIC ---
+const processSale = async () => {
+    const pid = document.getElementById('s-product-select').value;
+    const qty = parseInt(document.getElementById('s-qty').value);
+    const customer = document.getElementById('s-customer').value || 'Cash Customer';
+    const paidAmt = parseFloat(document.getElementById('s-paid').value) || 0;
+
+    if (!pid || isNaN(qty)) return alert("Select product and quantity");
+
+    try {
+        const pRes = await DBService.query("SELECT * FROM products WHERE id=?", [pid]);
+        const p = pRes.values[0];
+        
+        const total = p.price * qty;
+        const cost = p.cost * qty;
+        const profit = total - cost;
+        const status = paidAmt < total ? 'PARTIAL' : 'PAID';
+
+        await DBService.run(
+            "INSERT INTO sales (id, item_id, qty, total, cost, profit, customer_name, status) VALUES (?,?,?,?,?,?,?,?)",
+            [Date.now().toString(), pid, qty, total, cost, profit, customer, status]
+        );
+        
+        await DBService.run("UPDATE products SET stock = stock - ? WHERE id = ?", [qty, pid]);
+        
+        alert("Sale Recorded!");
+        showPage('dashboard');
+    } catch (e) {
+        alert("Sale Failed: " + e.message);
+    }
+};
+
+// --- INVENTORY LOGIC ---
+const saveProduct = async () => {
+    const name = document.getElementById('p-name').value;
+    const price = parseFloat(document.getElementById('p-price').value);
+    const cost = parseFloat(document.getElementById('p-cost').value);
+    const stock = parseInt(document.getElementById('p-stock').value);
+    const alertAt = parseInt(document.getElementById('p-alert').value);
+
+    if (!name || isNaN(price)) return alert("Missing Info");
 
     await DBService.run(
         "INSERT INTO products (name, price, cost, stock, low_stock_alert) VALUES (?,?,?,?,?)",
-        data
+        [name, price, cost, stock, alertAt]
     );
-    alert("Product Saved");
+    alert("Product Added");
     showPage('inventory');
 };
+
+// --- DATA RENDERING ---
+async function renderDashboard() {
+    const res = await DBService.query("SELECT SUM(total) as rev, SUM(profit) as prof FROM sales");
+    const rev = res.values[0].rev || 0;
+    const prof = res.values[0].prof || 0;
+    
+    document.getElementById('kpi-rev').innerText = rev.toLocaleString();
+    document.getElementById('kpi-profit').innerText = prof.toLocaleString();
+}
 
 async function renderInventory() {
     const res = await DBService.query("SELECT * FROM products ORDER BY name ASC");
     const list = document.getElementById('inventory-list');
     list.innerHTML = res.values.map(p => `
-        <div class="card">
+        <div class="card" style="margin-bottom:10px;">
             <div style="display:flex; justify-content:space-between;">
                 <strong>${p.name}</strong>
-                <span style="color:${p.stock <= p.low_stock_alert ? 'var(--danger)' : 'var(--success)'}">
-                    Qty: ${p.stock}
-                </span>
+                <span style="color:${p.stock <= p.low_stock_alert ? 'red' : 'green'}">Qty: ${p.stock}</span>
             </div>
-            <small>${currency} ${p.price}</small>
         </div>
     `).join('');
 }
 
-// SALES LOGIC
 async function populateProductSelect() {
-    const res = await DBService.query("SELECT id, name, price FROM products WHERE stock > 0");
+    const res = await DBService.query("SELECT id, name FROM products");
     const select = document.getElementById('s-product-select');
-    select.innerHTML = res.values.map(p => `<option value="${p.id}">${p.name} (${currency} ${p.price})</option>`).join('');
+    if (select) {
+        select.innerHTML = res.values.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    }
 }
 
-window.processSale = async () => {
-    const pid = document.getElementById('s-product-select').value;
-    const qty = parseInt(document.getElementById('s-qty').value);
-    const customer = document.getElementById('s-customer').value || 'Cash Customer';
-
-    const pRes = await DBService.query("SELECT * FROM products WHERE id=?", [pid]);
-    const p = pRes.values[0];
-    
-    const total = p.price * qty;
-    const cost = p.cost * qty;
-    const profit = total - cost;
-
-    await DBService.run(
-        "INSERT INTO sales (id, item_id, qty, total, cost, profit, customer_name, status) VALUES (?,?,?,?,?,?,?,?)",
-        [Date.now().toString(), pid, qty, total, cost, profit, customer, 'PAID']
-    );
-    await DBService.run("UPDATE products SET stock = stock - ? WHERE id = ?", [qty, pid]);
-    
-    alert("Sale Completed");
-    showPage('dashboard');
-};
-
-async function updateDashboard() {
-    const res = await DBService.query("SELECT SUM(total) as rev, SUM(profit) as prof FROM sales");
-    document.getElementById('kpi-rev').innerText = (res.values[0].rev || 0).toLocaleString();
-    document.getElementById('kpi-profit').innerText = (res.values[0].prof || 0).toLocaleString();
-}
-
-function initClock() {
-    const update = () => {
-        document.getElementById('current-date').innerText = new Date().toLocaleDateString();
-    };
-    update();
-}
+// --- IMPORTANT: GLOBAL MAPPING (The "Bridge") ---
+// This makes the functions visible to your HTML buttons
+window.showPage = showPage;
+window.processSale = processSale;
+window.saveProduct = saveProduct;
