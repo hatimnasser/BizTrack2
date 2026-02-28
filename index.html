@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BizTrack Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <div id="header">
+            <div id="header-title">🏪 <span id="h-bizname">BizTrack</span></div>
+        </div>
+
+        <div id="content">
+            <div class="page active" id="page-dashboard">
+                <div class="section-title">Today's Overview</div>
+                <div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-val" id="kpi-rev">—</div></div>
+                    <div class="kpi-card success"><div class="kpi-label">Profit</div><div class="kpi-val" id="kpi-profit">—</div></div>
+                </div>
+                
+                <div class="section-title">Recent Sales</div>
+                <div id="sales-list"></div>
+            </div>
+            
+            </div>
+
+        <nav id="nav">
+            <button class="nav-btn active" onclick="showPage('dashboard')"><span>📊</span><span>Dashboard</span></button>
+            <button class="nav-btn" onclick="showPage('inventory')"><span>📦</span><span>Inventory</span></button>
+            <button class="nav-btn" onclick="showPage('sales')"><span>🧾</span><span>Sales</span></button>
+            <button class="nav-btn" onclick="showPage('expenses')"><span>💸</span><span>Expenses</span></button>
+        </nav>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>
